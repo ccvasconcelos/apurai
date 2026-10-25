@@ -276,6 +276,18 @@ legenda_mapa <- function(nm) {
 
 INTERVALO <- 30   # segundos entre atualizações
 
+# ---- Contador de acessos -------------------------------------
+# Cada vez que alguém abre o app conta 1 acesso. O total fica salvo em
+# contador.txt (na pasta do app); "online agora" conta as sessões abertas.
+CONTADOR_ARQ <- "contador.txt"
+ler_contador <- function() {
+  x <- suppressWarnings(as.numeric(tryCatch(readLines(CONTADOR_ARQ, n = 1, warn = FALSE),
+                                            error = function(e) "0")))
+  if (length(x) == 0 || is.na(x)) 0 else x
+}
+acessos_total <- reactiveVal(ler_contador())   # compartilhados entre todas as sessões
+online_agora  <- reactiveVal(0)
+
 fmt  <- function(x) format(x, big.mark = ".", decimal.mark = ",", scientific = FALSE, trim = TRUE)
 pctf <- function(x, dig = 2) ifelse(is.na(x), "—",
   paste0(formatC(x, format = "f", digits = dig, decimal.mark = ","), "%"))
@@ -402,6 +414,11 @@ table.ord td.forte{font-weight:600}
 .autoria{margin-top:14px;font-size:11px;letter-spacing:.04em;color:#8A93A0}
 .autoria a{color:var(--azul);text-decoration:none;border-bottom:1px solid var(--amarelo)}
 .autoria a:hover{color:var(--verde)}
+.contador{display:inline-flex;align-items:center;gap:14px;margin-top:10px;font-size:11px;letter-spacing:.06em;
+  color:var(--suave);background:#fff;border:1px solid var(--linha);border-radius:999px;padding:5px 14px}
+.contador b{color:var(--tinta);font-weight:600;font-variant-numeric:tabular-nums}
+.contador .on{display:inline-flex;align-items:center;gap:6px}
+.contador .on i{width:7px;height:7px;border-radius:50%;background:var(--verde);display:inline-block;animation:pulso 1.8s infinite}
 
 @media (max-width:640px){
   .topo{padding:26px 16px 22px} .marca{font-size:42px}
@@ -618,6 +635,7 @@ ui <- fluidPage(
       div(class = "rodape", faixa(),
           "Fonte: Tribunal Superior Eleitoral — resultados.tse.jus.br", br(),
           "Resultados parciais até o fim da totalização. Antes das 17h (Brasília), o exterior é a soma dos boletins de urna publicados pelo TSE.",
+          uiOutput("contador"),
           div(class = "autoria", "Desenvolvido por Caroline C. Vasconcelos · ",
               tags$a(href = "https://github.com/ccvasconcelos/apurai", target = "_blank",
                      "github.com/ccvasconcelos/apurai"))))
@@ -627,6 +645,22 @@ ui <- fluidPage(
 server <- function(input, output, session) {
 
   info <- descobrir_eleicao()
+
+  # ---- contador de acessos ------------------------------------
+  isolate({
+    acessos_total(acessos_total() + 1)
+    online_agora(online_agora() + 1)
+    tryCatch(writeLines(format(acessos_total(), scientific = FALSE), CONTADOR_ARQ),
+             error = function(e) NULL)
+  })
+  session$onSessionEnded(function() isolate(online_agora(max(0, online_agora() - 1))))
+
+  output$contador <- renderUI({
+    n <- acessos_total(); on <- online_agora()
+    div(class = "contador",
+        span(tags$b(fmt(n)), if (n == 1) " acesso" else " acessos"),
+        span(class = "on", tags$i(), tags$b(fmt(on)), " online agora"))
+  })
 
   dados <- reactive({
     invalidateLater(INTERVALO * 1000)
