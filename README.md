@@ -33,6 +33,8 @@ Os mapas são desenhados em SVG pelo próprio app, a partir de arquivos na pasta
 - `mundo.geojson`: países (simplificado de *Natural Earth*, domínio público)
 - `cidades_exterior.csv`: código TSE, país e coordenadas das 186 cidades com seção no exterior
 
+O ícone do app (favicon) fica na pasta `www/`.
+
 ## Como rodar
 
 ```r
