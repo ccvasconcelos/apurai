@@ -615,8 +615,8 @@ ui <- fluidPage(
           "Fonte: Tribunal Superior Eleitoral — resultados.tse.jus.br", br(),
           "Resultados parciais até o fim da totalização. Antes das 17h (Brasília), o exterior é a soma dos boletins de urna publicados pelo TSE.",
           div(class = "autoria", "Desenvolvido por Caroline C. Vasconcelos · ",
-              tags$a(href = "https://github.com/ccvasconcelos", target = "_blank",
-                     "github.com/ccvasconcelos"))))
+              tags$a(href = "https://github.com/ccvasconcelos/apurai", target = "_blank",
+                     "github.com/ccvasconcelos/apurai"))))
 )
 
 # =============================================================
