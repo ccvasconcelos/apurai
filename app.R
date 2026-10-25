@@ -3,8 +3,8 @@
 #  Dados públicos do TSE (resultados.tse.jus.br)
 #
 #  - Total, UFs e exterior: arquivos oficiais de totalização
-#    (liberados pelo TSE a partir das 17h de Brasília)
-#  - Exterior ANTES das 17h: soma dos Boletins de Urna (BU) que
+#    (liberados pelo TSE após o fim da votação)
+#  - Exterior antes da liberação: soma dos Boletins de Urna (BU) que
 #    as seções do exterior já enviaram e o TSE já publicou
 #  Atualiza sozinho a cada 30 s.
 # =============================================================
@@ -52,7 +52,7 @@ descobrir_eleicao <- function() {
 
 # ---- Arquivos .jws: o conteúdo JSON fica no meio (base64url) --
 ler_jws <- function(txt) {
-  p <- strsplit(txt, ".", fixed = TRUE)[[1]][2]
+  p <- gsub("\\s", "", strsplit(txt, ".", fixed = TRUE)[[1]][2])
   p <- chartr("-_", "+/", p)
   p <- paste0(p, strrep("=", (4 - nchar(p) %% 4) %% 4))
   fromJSON(rawToChar(base64_dec(p)), simplifyVector = FALSE)
@@ -634,7 +634,7 @@ ui <- fluidPage(
               uiOutput("tab_ext"))),
       div(class = "rodape", faixa(),
           "Fonte: Tribunal Superior Eleitoral — resultados.tse.jus.br", br(),
-          "Resultados parciais até o fim da totalização. Antes das 17h (Brasília), o exterior é a soma dos boletins de urna publicados pelo TSE.",
+          "Resultados parciais até o fim da totalização. Enquanto o TSE não libera a totalização, o exterior é a soma dos boletins de urna publicados pelo TSE.",
           uiOutput("contador"),
           div(class = "autoria", "Desenvolvido por Caroline C. Vasconcelos · ",
               tags$a(href = "https://github.com/ccvasconcelos/apurai", target = "_blank",
@@ -667,7 +667,7 @@ server <- function(input, output, session) {
     input$atualizar
     tot <- ler_totais(info, c("br", "zz", ufs))
     bu  <- tryCatch(atualizar_bu_exterior(info), error = function(e) NULL)
-    list(tot = tot, bu = bu, quando = format(Sys.time(), "%H:%M:%S"))
+    list(tot = tot, bu = bu, quando = format(Sys.time(), "%H:%M:%S", tz = "America/Sao_Paulo"))
   })
 
   nomes <- reactive({
@@ -724,14 +724,14 @@ server <- function(input, output, session) {
   })
 
   # ---- textos -------------------------------------------------
-  output$relogio <- renderText(paste("Ao vivo ·", dados()$quando))
+  output$relogio <- renderText(paste("Ao vivo ·", dados()$quando, "(Brasília)"))
   output$secoes_br <- renderText({
     d <- total_de("br"); if (liberado(d)) pctf(d$secoes[1]) else "—"
   })
   output$nota_br <- renderText({
     d <- total_de("br")
     if (liberado(d)) paste(fmt(d$st[1]), "de", fmt(d$ts[1]), "seções")
-    else "Liberação às 17h de Brasília (16h em Manaus)"
+    else "Aguardando a liberação do TSE"
   })
   output$secoes_zz <- renderText({ e <- exterior(); if (is.null(e)) "—" else e$secoes })
   output$fonte_zz  <- renderText({ e <- exterior(); if (is.null(e)) "" else e$fonte })
@@ -749,7 +749,7 @@ server <- function(input, output, session) {
   output$placar_br <- renderUI({
     d <- total_de("br")
     if (liberado(d)) placar(d, nomes())
-    else placar(NULL, nomes(), aviso = "A totalização oficial começa às 17h de Brasília (16h em Manaus).")
+    else placar(NULL, nomes(), aviso = "Aguardando o TSE liberar a totalização oficial.")
   })
   output$placar_zz <- renderUI({
     e <- exterior(); placar(if (is.null(e)) NULL else e$d, nomes())
@@ -771,7 +771,7 @@ server <- function(input, output, session) {
               mapa_br$d[i], cores[i], htmltools::htmlEscape(dica, attribute = TRUE))
     }, character(1))
     tagList(
-      if (is.null(d)) div(class = "espera", "O mapa se colore quando o TSE liberar a totalização (17h de Brasília)."),
+      if (is.null(d)) div(class = "espera", "O mapa se colore quando o TSE liberar a totalização."),
       div(class = "mapa", HTML(sprintf('<svg viewBox="%s" role="img" aria-label="Mapa do Brasil por UF">%s</svg>',
                                        VB_BR, paste(caminhos, collapse = "")))),
       legenda_mapa(nm))
